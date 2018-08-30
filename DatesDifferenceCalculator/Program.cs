@@ -4,23 +4,23 @@ namespace CodeKatas
 {
     public class Program
     {
-        private static INumbersPositionsSumsAreEqual NumberPositionsSumsAreEqual { get; set; }
+        private static IDatesDifferenceCalculator DatesDifferenceCalculator { get; set; }
 
         static void Main(string[] args)
         {
-            NumberPositionsSumsAreEqual = new CharNumbersPositionsSumsAreEqual();
-            //NumberPositionsSumsAreEqual = new IntNumbersPositionsSumsAreEqual();
+            DatesDifferenceCalculator = new DatesDifferenceCalculator();
             var input1 = GetUserInput();
             var input2 = GetUserInput();
 
-            Console.WriteLine(NumberPositionsSumsAreEqual.NumberPositionSumsAreEqual(input1, input2).ToString());
+            var (Days, Hours, Minutes) = DatesDifferenceCalculator.CalculateDifference(input1, input2);
+            Console.WriteLine($"There are {Days} days, {Hours} hours and {Minutes} minutes between the dates entered.");
 
             Console.ReadLine();
         }
 
         static string GetUserInput()
         {
-            Console.Write("Enter number: ");
+            Console.Write("Enter date: ");
 
             string input = string.Empty;
 
@@ -30,13 +30,13 @@ namespace CodeKatas
 
                 if (input.Length == 0)
                 {
-                    Console.Write("Enter number: ");
+                    Console.Write("Enter date: ");
                 }
 
-                if (!NumberPositionsSumsAreEqual.IsValidUserInput(input))
+                if (!DatesDifferenceCalculator.IsValidUserInput(input))
                 {
-                    Console.Write("Input can only contain 0-9");
-                    Console.Write("Enter number: ");
+                    Console.Write("Invalid input.");
+                    Console.Write("Enter date: ");
                     input = string.Empty;
                 }
             }
