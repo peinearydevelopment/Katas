@@ -12,34 +12,36 @@ namespace Tests
 
         private static readonly string _dbRoot = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
-        //private static string DbName => $"{typeof(T).Name}.db";
+        private static readonly Type Type = typeof(T);
+
+        private static readonly string DbLocation = Path.Combine(_dbRoot, $"{Type.Name}.db");
+
+        private static readonly PropertyInfo[] Properties = Type.GetProperties().Where(prop => prop.Name != "Id").OrderBy(prop => prop.Name).ToArray();
 
         public static T Find(string id)
         {
-            var tType = typeof(T);
-            var fileLocation = Path.Combine(_dbRoot, $"{tType.Name}.db");
-            var dbRecord = !File.Exists(fileLocation) ? null : File.ReadLines(fileLocation).FirstOrDefault(l => l.StartsWith($"{id}|"));
+            var dbRecord = !File.Exists(DbLocation) ? null : File.ReadLines(DbLocation).FirstOrDefault(l => l.StartsWith($"{id}|"));
             if (dbRecord == null)
             {
                 return null;
             }
 
             var dbProps = dbRecord.Split('|');
-            var index = 0;
-            var t = new T();
-            t.Id = dbProps[0];
-            dbProps = dbProps.Skip(1).ToArray();
-            foreach (var property in tType.GetProperties().Where(prop => prop.Name != "Id").OrderBy(prop => prop.Name))
+            var t = new T
             {
-                if (property.PropertyType.Equals(dbProps[index].GetType()))
+                Id = dbProps[0]
+            };
+            dbProps = dbProps.Skip(1).ToArray();
+            foreach (var property in Properties.Select((p, i) => new { Index = i, PropertyInfo = p }))
+            {
+                if (property.PropertyInfo.PropertyType.Equals(dbProps[property.Index].GetType()))
                 {
-                    property.SetValue(t, dbProps[index], null);
+                    property.PropertyInfo.SetValue(t, dbProps[property.Index], null);
                 }
-                else if (property.PropertyType.Namespace == typeof(T).Namespace)
+                else if (property.PropertyInfo.PropertyType.Namespace == Type.Namespace)
                 {
-                    property.SetValue(t, Address.Find(dbProps[index]), null);
+                    property.PropertyInfo.SetValue(t, Address.Find(dbProps[property.Index]), null);
                 }
-                index++;
             }
 
             return t;
@@ -52,16 +54,14 @@ namespace Tests
                 return;
             }
 
-            var tType = typeof(T);
-            var fileLocation = Path.Combine(_dbRoot, $"{tType.Name}.db");
-            Id = (File.Exists(fileLocation) ? File.ReadLines(fileLocation).Count() + 1 : 1).ToString();
+            Id = GetNextId();
 
-            using (var writer = new StreamWriter(fileLocation, true))
+            using (var writer = new StreamWriter(DbLocation, true))
             {
                 writer.Write($"{Id}|");
-                foreach (var property in tType.GetProperties().Where(prop => prop.Name != "Id").OrderBy(prop => prop.Name))
+                foreach (var property in Properties)
                 {
-                    if (property.PropertyType.Namespace == typeof(T).Namespace)
+                    if (property.PropertyType.Namespace == Type.Namespace)
                     {
                         var address = property.GetValue(this) as Address;
                         address.Save();
@@ -79,12 +79,9 @@ namespace Tests
 
         public void Delete()
         {
-            var tType = typeof(T);
-            var fileLocation = Path.Combine(_dbRoot, $"{tType.Name}.db");
-
-            if (File.Exists(fileLocation))
+            if (File.Exists(DbLocation))
             {
-                File.WriteAllLines(fileLocation, File.ReadLines(fileLocation).Where(l => l.StartsWith($"{Id}|")).ToList());
+                File.WriteAllLines(DbLocation, File.ReadLines(DbLocation).Where(l => !l.StartsWith($"{Id}|")).ToList());
                 Id = null;
             }
             else
@@ -95,9 +92,9 @@ namespace Tests
 
         public override bool Equals(object obj)
         {
-            foreach (var property in GetType().GetProperties().OrderBy(prop => prop.Name))
+            foreach (var property in GetType().GetProperties())
             {
-                if (property.PropertyType.Namespace != typeof(T).Namespace)
+                if (property.PropertyType.Namespace != Type.Namespace)
                 {
                     if (!property.GetValue(this).Equals(property.GetValue(obj)))
                     {
@@ -107,6 +104,11 @@ namespace Tests
             }
 
             return true;
+        }
+
+        private string GetNextId()
+        {
+            return (File.Exists(DbLocation) ? File.ReadLines(DbLocation).Count() + 1 : 1).ToString();
         }
     }
 
