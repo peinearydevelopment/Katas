@@ -38,11 +38,10 @@ namespace Tests
                 {
                     property.PropertyInfo.SetValue(t, dbProps[property.Index], null);
                 }
-                else if (property.PropertyInfo.PropertyType.Namespace == Type.Namespace)
+                else if (IsExtendedType(property.PropertyInfo))
                 {
                     var findMethod = property.PropertyInfo.PropertyType.BaseType.GetMethod("Find");
-                    var newAddress = Activator.CreateInstance(property.PropertyInfo.PropertyType.BaseType);
-                    var dbAddress = findMethod.Invoke(newAddress, new[] { dbProps[property.Index] });
+                    var dbAddress = findMethod.Invoke(null, new[] { dbProps[property.Index] });
 
                     property.PropertyInfo.SetValue(t, dbAddress, null);
                 }
@@ -65,7 +64,7 @@ namespace Tests
                 writer.Write($"{Id}|");
                 foreach (var property in Properties)
                 {
-                    if (property.PropertyType.Namespace == Type.Namespace)
+                    if (IsExtendedType(property))
                     {
                         var address = property.GetValue(this);
                         var saveMethod = property.PropertyType.GetMethod("Save");
@@ -114,6 +113,12 @@ namespace Tests
         private string GetNextId()
         {
             return (File.Exists(DbLocation) ? File.ReadLines(DbLocation).Count() + 1 : 1).ToString();
+        }
+
+        private static bool IsExtendedType(PropertyInfo property)
+        {
+            return property.PropertyType.Namespace == Type.Namespace
+                && property.PropertyType == property.PropertyType.BaseType.GenericTypeArguments[0];
         }
     }
 
