@@ -40,7 +40,11 @@ namespace Tests
                 }
                 else if (property.PropertyInfo.PropertyType.Namespace == Type.Namespace)
                 {
-                    property.PropertyInfo.SetValue(t, Address.Find(dbProps[property.Index]), null);
+                    var findMethod = property.PropertyInfo.PropertyType.BaseType.GetMethod("Find");
+                    var newAddress = Activator.CreateInstance(property.PropertyInfo.PropertyType.BaseType);
+                    var dbAddress = findMethod.Invoke(newAddress, new[] { dbProps[property.Index] });
+
+                    property.PropertyInfo.SetValue(t, dbAddress, null);
                 }
             }
 
@@ -63,9 +67,10 @@ namespace Tests
                 {
                     if (property.PropertyType.Namespace == Type.Namespace)
                     {
-                        var address = property.GetValue(this) as Address;
-                        address.Save();
-                        writer.Write($"{address.Id}|");
+                        var address = property.GetValue(this);
+                        var saveMethod = property.PropertyType.GetMethod("Save");
+                        saveMethod.Invoke(address, new object[0]);
+                        writer.Write($"{address.GetType().GetProperty("Id").GetValue(address)}|");
                     }
                     else
                     {
